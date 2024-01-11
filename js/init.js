@@ -744,7 +744,10 @@
 		return url;
 	};
 	U.pathjoin = function( parts, sep="/" ){
-		return parts.join(sep).replace( new RegExp(sep+'{1,}','g'), sep);
+		parts=parts.join(sep)
+		let x=/([^:\/\/]+):\/\/(.*)/.exec(parts);
+		if(x){ prefix=x[1]+"://"; parts=x[2]; }
+		return prefix+parts.replace( new RegExp(sep+'{1,}','g'), sep);
 	};
 	U.abs = function( url ){
 		return url.indexOf("://") < 0

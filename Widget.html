@@ -5,7 +5,6 @@
 	<meta http-equiv="X-UA-Compatible" content="IE=edge,Chrome=1"/>
 	<title>Cyberpiers</title>
 	<link rel="icon" type="image/png" href="data/favicon.png"/>
-	<link rel="stylesheet" href="css/style.css"/>
 	<script>
 	var Main={
 		onload:function(){
@@ -13,21 +12,33 @@
 			fm.set({
 				"title":"TITLE",
 				"data":[{"A":123,"B":456},{"A":789,"B":0}],
-				"thanks":"Me"
+				"thanks":"Me",
+				"type":"公司",
+				"ext":{
+					"basic":{ "T":"BASIC" },
+					"family":{ "T":"FAMILY" }
+				}
 			}).then(function(rv){
 				console.log("DEBUG",JSON.stringify(fm.get(),null,2));
 			},console.log);
 		}
 	};
 	</script>
-	<script PierEntrance="Main.onload" PierXMods="Widget" src="js/init.js"></script>
+	<script PierEntrance="Main.onload" PierXMods="Widget" src="http://piersforge.com/js/init.js"></script>
 </head>
 <body>
 	<div>
 		<div an="title:Text"></div>
 		<table><tbody an="data:List"><tr>
+			<td an="A:Text" colspan="2"></td>
+		</tr><tr>
 			<td an="A:Text"></td><td an="B:Text"></td>
 		</tr></tbody></table>
+		<div an="ext:WOpt">
+			<div WOpt="basic">BASIC COMES HERE:<span an="T:Text"></span></div>
+			<div WOpt="family">Family COMES HERE:<span an="T:Text"></span></div>
+			<div WOpt="friends">Friends COMES HERE:<span an="T:Text"></span></div>
+		</div>
 		<div an="thanks:Text"></div>
 	</div>
 

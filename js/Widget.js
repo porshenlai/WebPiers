@@ -98,23 +98,14 @@
 			e.Widget=this;
 			this.E=e;
 			this.Tag=tagname;
-			this.LT=this.E.cloneNode(true);
+			this.Temp=[];
+			while(this.E.firstChild){
+				if(1===this.E.firstChild.nodeType) this.Temp.push(this.E.firstChild);
+				this.E.removeChild(this.E.firstChild);
+			}
 		}, {
-			"set": function (ds) { // {{{
-				var self=this;
-				self.__Doc__ = ds = ds || self.__Doc__ || [];
-				self.clear();
-				return new Promise(function(or,oe){
-					Promise.all(ds.reduce(function(r, d, ix){
-						if(!d) return r;
-						let fm=new Widgets.Form(self.LT.cloneNode(true),self.Tag);
-						r.push(fm.set(d));
-						fm.E.__Idx__=ix;
-						fm.E.setAttribute("RowType",ix%2==0?"Even":"Odd");
-						self.E.appendChild(fm.E);
-						return r;
-					},[])).then(or, oe);
-				});
+			"set": function (ds=[]) { // {{{
+				return this.__set__( this.__Doc__ = ds );
 			}, // }}}
 			"get": function () { // {{{
 				var self=this,rd=[];
@@ -129,15 +120,34 @@
 					this.E.removeChild(this.E.firstChild);
 				delete this.__Doc__;
 			}, // }}}
-			"act": function (op,args) { // {{{
-				switch(op){
-				case "SortA":
+			"__set__": function (ds) { // {{{
+				var self=this;
+				self.clear();
+				return new Promise(function(or,oe){
+					Promise.all(ds.reduce(function(r, d, ix){
+						if(!d) return r;
+						self.Temp.forEach(function(temp){
+							let fm=new Widgets.Form(temp.cloneNode(true),self.Tag);
+							r.push(fm.set(d));
+							fm.E.__Idx__=ix;
+							fm.E.setAttribute("RowType",ix%2==0?"Even":"Odd");
+							self.E.appendChild(fm.E);
+						});
+						return r;
+					},[])).then(or, oe);
+				});
+			}, // }}}
+			"sort": function (func) {
+				return this.__set__(this.__Doc__.sort(func))
+/*
 					return this.set(this.E.__Doc__.sort(function(a,b){
 						return a[args] > b[args] ? 1 : a[args] < b[args] ? -1 : 0 ; }));
-				case "SortD":
 					return this.set(this.E.__Doc__.sort(function(a,b){
 						return a[args] > b[args] ? -1 : a[args] < b[args] ? 1 : 0 ; }));
-				case "Filter":
+*/
+			},
+			"filter": function (filter){
+/*
 					this.E.__Doc__.myFilter = args ? function(d){
 						return d && args.reduce(function(r,a,i){
 							return r && a.reduce(function(r,o,i){
@@ -151,8 +161,8 @@
 						},true) ? d : undefined;
 					} : undefined;
 					return this.set();
-				}
-			}, // }}}
+*/
+			},
 			"removeItem": function (e) { // {{{
 				i = Piers.DOM.select( e, function(i){ return "__Idx__" in i; }, mode=8 );
 				i = (i||{}).__Idx__;
@@ -169,43 +179,37 @@
 			}	// }}}
 		}),
 		// {"FormA":{...},"FormB":{...}} => <div>FormA</div> or <div>FormB</div>
-		"OptForm": Piers.OBJ.inherit(function (e, tagname="an") {
-			e.Widget=this;
-			this.E=e;
-			this.FormTag=tagname;
-			this.L={};
+		"WOpt": Piers.OBJ.inherit(function (e, tagname="an") {
+			(this.E=e).Widget=this;
+			this.Tag=tagname;
 		}, {
 			"set": function (d) {	// {{{
-				let wa=[];
-				Piers.DOM.selectAll("[OptForm]").forEach(function(e){
-					let key=e.getAttribute("OptForm");
-					if (key in d) {
-						d.removeAttribute("WidgetHide");
-						if(!d.Widget) new Widgets.Form(d, tagname);
-						wa.push(d.Widget.set(d[key]));
-					} else
-						d.setAttribute("WidgetHide","1");
+				let self=this,wa=[];
+				return new Promise(function(or,oe){
+					Piers.DOM.selectAll(self.E,"[WOpt]").forEach(function(e){
+						let key=e.getAttribute("WOpt");
+						if (key in d) {
+							e.removeAttribute("WidgetHide");
+							if(!e.Widget) new Widgets.Form(e, self.Tag);
+							wa.push(e.Widget.set(d[key]));
+						} else if(key)
+							e.setAttribute("WidgetHide","1");
+					});
+					self.__Doc__ = d;
+					Promise.all(wa).then(or,oe);
 				});
-				this.E.__Doc__ = d;
-				return Promise.all(wa);
 			},	// }}}
 			"get": function (d) {	// {{{
-				var i,es=this.E.querySelectorAll("[OptForm]"), dn, rd={};
-				if(!d) d=this.E.__Doc__||{};
-				for(i=0;i<es.length;i++){
-					dn = es[i].getAttribute("OptForm");
-					cs = es[i].getAttribute("class");
-					if( (!cs) || cs.indexOf("PsHide") < 0 ){
-						if( !(dn in this.L) ) this.L[dn] = new Form( es[i], this.FormTag );
-						rd[dn] = this.L[dn].get( d[dn] );
-					}
-				}
-				this.E.__Doc__ = rd;
-				return rd;
+				let self=this, rv={};
+				Piers.DOM.selectAll(self.E,"[WOpt]").forEach(function(e){
+					if(e.getAttribute("WidgetHide")) return;
+					if(e.Widget) rv[e.getAttribute("WOpt")]=e.Widget.get();
+				});
+				return rv;
 			},	// }}}
 			"clear": function() {	// {{{
-				(new Form( this.E, this.FormTag )).clear();
-				delete this.E.__Doc__;
+				(new Form( this.E, this.Tag )).clear();
+				delete this.__Doc__;
 			}	// }}}
 		}),
 		"Form": Piers.OBJ.inherit(function (e=document.body, tagname="an") {
