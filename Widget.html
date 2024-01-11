@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+	<meta http-equiv="X-UA-Compatible" content="IE=edge,Chrome=1"/>
+	<title>Cyberpiers</title>
+	<link rel="icon" type="image/png" href="data/favicon.png"/>
+	<link rel="stylesheet" href="css/style.css"/>
+	<script>
+	var Main={
+		onload:function(){
+			let fm=new Piers.Widget.Form(document.body);
+			fm.set({
+				"title":"TITLE",
+				"data":[{"A":123,"B":456},{"A":789,"B":0}],
+				"thanks":"Me"
+			}).then(function(rv){
+				console.log("DEBUG",JSON.stringify(fm.get(),null,2));
+			},console.log);
+		}
+	};
+	</script>
+	<script PierEntrance="Main.onload" PierXMods="Widget" src="js/init.js"></script>
+</head>
+<body>
+	<div>
+		<div an="title:Text"></div>
+		<table><tbody an="data:List"><tr>
+			<td an="A:Text"></td><td an="B:Text"></td>
+		</tr></tbody></table>
+		<div an="thanks:Text"></div>
+	</div>
+
+</body>
+</html>
