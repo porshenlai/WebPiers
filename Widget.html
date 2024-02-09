@@ -5,42 +5,99 @@
 	<meta http-equiv="X-UA-Compatible" content="IE=edge,Chrome=1"/>
 	<title>Cyberpiers</title>
 	<link rel="icon" type="image/png" href="data/favicon.png"/>
+	<style>
+		#Display {
+ 			width:88%;
+			border:1px solid blue;
+			text-align:left;
+			margin:1% 5%;
+			padding:1%;
+		}
+	</style>
 	<script>
 	var Main={
-		onload:function(){
-			let fm=new Piers.Widget.Form(document.body);
-			fm.set({
-				"title":"TITLE",
-				"data":[{"A":123,"B":456},{"A":789,"B":0}],
-				"thanks":"Me",
-				"type":"公司",
-				"ext":{
-					"basic":{ "T":"BASIC" },
-					"family":{ "T":"FAMILY" }
-				}
-			}).then(function(rv){
-				console.log("DEBUG",JSON.stringify(fm.get(),null,2));
+		redraw:function(){
+			this.Form=new Piers.Widget.Form(Piers.DOM.select("#Display",document.body));
+			this.Form.set(
+				JSON.parse(Piers.DOM.select("textarea").value)
+			).then(function(rv){
+				console.log("Redraw completed");
 			},console.log);
+		},
+		acquire:function(){
+			Piers.DOM.select("textarea").value=JSON.stringify(this.Form.get(),null,4);
+		},
+		act:function(fn,btn){
+			switch(fn){
+			case '+':
+				Piers.DOM.select('[an="data:List"]').Widget.insertItem({"A":"A","C":"C"},0);
+				break;
+			case '-':
+				Piers.DOM.select('[an="data:List"]').Widget.removeItem(btn);
+				break;
+			}
+		},
+		onload:function(){
+			this.redraw();
 		}
 	};
 	</script>
-	<script PierEntrance="Main.onload" PierXMods="Widget" src="http://piersforge.com/js/init.js"></script>
+	<script PierEntrance="Main.onload" PierXMods="Widget" src="js/init.js"></script>
 </head>
-<body>
-	<div>
-		<div an="title:Text"></div>
-		<table><tbody an="data:List"><tr>
-			<td an="A:Text" colspan="2"></td>
-		</tr><tr>
-			<td an="A:Text"></td><td an="B:Text"></td>
-		</tr></tbody></table>
-		<div an="ext:WOpt">
-			<div WOpt="basic">BASIC COMES HERE:<span an="T:Text"></span></div>
-			<div WOpt="family">Family COMES HERE:<span an="T:Text"></span></div>
-			<div WOpt="friends">Friends COMES HERE:<span an="T:Text"></span></div>
-		</div>
-		<div an="thanks:Text"></div>
+<body style="text-align:center;">
+	<textarea style="width:90%;" rows="15">{
+	"title":"標題在這裡",
+	"data":[
+		{"A":123,"B":456,"C":789},
+		{"A":789,"B":0,"C":123456},
+		{"A":"LINE-1","B":"L2-LEFT","C":"L2-RIGHT"}
+	],
+	"thanks":"Me",
+	"type":"公司",
+	"ext":{
+		"basic":{ "T":"BASIC" },
+		"family":{ "T":"FAMILY" }
+	}
+}</textarea>
+	<div style="display:flex;justify-content:space-around;">
+		<button onclick="Main.redraw()">&#8615;</button>
+		<button onclick="Main.acquire()">&#8613;</button>
 	</div>
-
+	<div id="Display">
+		<div an="title:Text"></div>
+		<table border="1" width="100%">
+			<thead>
+				<tr>
+					<td colspan="2">欄位名稱</td>
+					<th><button onclick='Main.act("+",this)'>新增</button></th>
+				</tr>
+			</thead>
+			<tbody an="data:List">
+				<tr>
+					<td colspan="2"><input an="A:Value"></input></td>
+					<th rowspan="2"><button onclick='Main.act("-",this)'>刪除</button></th>
+				</tr>
+				<tr>
+					<td an="B:Text"></td>
+					<td an="C:Text"></td>
+				</tr>
+			</tbody>
+		</table>
+		<div an="ext:WOpt">
+			<div WOpt="basic">
+				BASIC COMES HERE:
+				<span an="T:Text"></span>
+			</div>
+			<div WOpt="family">
+				Family COMES HERE:
+				<span an="T:Text"></span>
+			</div>
+			<div WOpt="friends">
+				Friends COMES HERE:
+				<span an="T:Text"></span>
+			</div>
+		</div>
+		<div><input an="thanks:Value"></input></div>
+	</div>
 </body>
 </html>

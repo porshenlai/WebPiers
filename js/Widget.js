@@ -100,27 +100,11 @@
 			this.Tag=tagname;
 			this.Temp=[];
 			while(this.E.firstChild){
-				if(1===this.E.firstChild.nodeType) this.Temp.push(this.E.firstChild);
+				if (1===this.E.firstChild.nodeType) this.Temp.push(this.E.firstChild);
 				this.E.removeChild(this.E.firstChild);
 			}
 		}, {
 			"set": function (ds=[]) { // {{{
-				return this.__set__( this.__Doc__ = ds );
-			}, // }}}
-			"get": function () { // {{{
-				var self=this,rd=[];
-				for (let e=self.E.firstChild;e;e=e.nextSibling) {
-					if (1!==e.nodeType) continue;
-					rd.push(e.Widget.get());
-				}
-				return rd;
-			}, // }}}
-			"clear": function () { // {{{
-				while( this.E.firstChild )
-					this.E.removeChild(this.E.firstChild);
-				delete this.__Doc__;
-			}, // }}}
-			"__set__": function (ds) { // {{{
 				var self=this;
 				self.clear();
 				return new Promise(function(or,oe){
@@ -137,45 +121,40 @@
 					},[])).then(or, oe);
 				});
 			}, // }}}
-			"sort": function (func) {
-				return this.__set__(this.__Doc__.sort(func))
-/*
-					return this.set(this.E.__Doc__.sort(function(a,b){
-						return a[args] > b[args] ? 1 : a[args] < b[args] ? -1 : 0 ; }));
-					return this.set(this.E.__Doc__.sort(function(a,b){
-						return a[args] > b[args] ? -1 : a[args] < b[args] ? 1 : 0 ; }));
-*/
-			},
-			"filter": function (filter){
-/*
-					this.E.__Doc__.myFilter = args ? function(d){
-						return d && args.reduce(function(r,a,i){
-							return r && a.reduce(function(r,o,i){
-								return r || (function(o,d){
-									var k;
-									if( o[1] ) return (d[o[1]]||"").toString().indexOf(o[0]) >= 0;
-									for( k in d ) if( (d[k]||"").toString().indexOf(o[0]) >=0 ) return true;
-									return false;
-								})(o,d);
-							},false);
-						},true) ? d : undefined;
-					} : undefined;
-					return this.set();
-*/
-			},
-			"removeItem": function (e) { // {{{
-				i = Piers.DOM.select( e, function(i){ return "__Idx__" in i; }, mode=8 );
-				i = (i||{}).__Idx__;
-				if( undefined !== i ){
-					this.get();
-					this.E.__Doc__.splice(i,1);
-					this.set().then(console.log,console.log);
+			"get": function () { // {{{
+				var self=this,rd=[];
+				for (let e=self.E.firstChild; e; e=e.nextSibling) {
+					if (1!==e.nodeType) continue;
+					if (e.__Idx__ in rd)
+						rd[e.__Idx__]=Object.assign(rd[e.__Idx__],e.Widget.get());
+					else
+						rd.push(e.Widget.get());
 				}
+				return rd;
+			}, // }}}
+			"clear": function () { // {{{
+				while( this.E.firstChild )
+					this.E.removeChild(this.E.firstChild);
+			}, // }}}
+			"sort": function (func) {
+				return this.set(this.get().sort(func))
+			},
+			"getData":function (e, idxOnly=false) { // {{{
+				let i=Piers.DOM.select( function(i){ return "__Idx__" in i; }, root=e, mode=8 );
+				if (idxOnly) return (i||{}).__Idx__;
+				return i.Widget.get();
+			}, // }}}
+			"removeItem": function (e) { // {{{
+				let doc=this.get(),
+					i=this.getData(e,true);
+				if( undefined !== i )
+					doc.splice(i,1);
+				return this.set(doc);
 			}, // }}}
 			"insertItem": function (d, loc=undefined) {	// {{{
-				console.log( "XXXXX", this.get() );
-				if( undefined !== loc ) this.E.__Doc__.splice(loc,0,d); else this.E.__Doc__.push(d);
-				this.set().then(console.log,console.log);
+				let doc=this.get();
+				if( undefined !== loc ) doc.splice(loc, 0, d); else doc.push(d);
+				return this.set(doc);
 			}	// }}}
 		}),
 		// {"FormA":{...},"FormB":{...}} => <div>FormA</div> or <div>FormB</div>
@@ -186,7 +165,7 @@
 			"set": function (d) {	// {{{
 				let self=this,wa=[];
 				return new Promise(function(or,oe){
-					Piers.DOM.selectAll(self.E,"[WOpt]").forEach(function(e){
+					Piers.DOM.selectAll("[WOpt]",self.E).forEach(function(e){
 						let key=e.getAttribute("WOpt");
 						if (key in d) {
 							e.removeAttribute("WidgetHide");
@@ -201,7 +180,7 @@
 			},	// }}}
 			"get": function (d) {	// {{{
 				let self=this, rv={};
-				Piers.DOM.selectAll(self.E,"[WOpt]").forEach(function(e){
+				Piers.DOM.selectAll("[WOpt]",self.E).forEach(function(e){
 					if(e.getAttribute("WidgetHide")) return;
 					if(e.Widget) rv[e.getAttribute("WOpt")]=e.Widget.get();
 				});
@@ -247,7 +226,7 @@
 				});
 			},	// }}}
 			"get": function (d) {	// {{{
-				let self=this, rd=d||self.__Doc__;
+				let self=this, rd=d||self.__Doc__||{};
 				(function scan(p) {
 					for (let e=p.firstChild;e;e=e.nextSibling) {
 						if (1!==e.nodeType) continue;
@@ -295,7 +274,7 @@
 			},	// }}}
 		}),
 		"init":function(tagname="an"){
-			Piers.DOM.selectAll(document.body, "["+tagname+"]").forEach(function(pb){
+			Piers.DOM.selectAll("["+tagname+"]").forEach(function(pb){
 				if(pb.Widget) return;
 				var a = pb.getAttribute(tagname);
 				if (a && a in Widgets)

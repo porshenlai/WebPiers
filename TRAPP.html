@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+	<meta http-equiv="X-UA-Compatible" content="IE=edge,Chrome=1"/>
+	<title>Cyberpiers</title>
+	<link rel="icon" type="image/png" href="data/favicon.png"/>
+	<script>
+	var Main={};
+	(function (M) { // {{{
+		function calcN(s,dir=1){
+			let row=Math.floor((s-1)/4),
+				tp= (row in [0,11,12]) ? 3 :
+					(row in [1,3,5,7,9]) ? 1 : 2 ;
+			return {
+				"TR":13,
+				"H":(tp&dir)>0,"W":((s-1)%4)<2,
+				"O":s%2===1 ? "E" : "W",
+				"R":dir===1 ? (row+1) : (13-row)
+			};
+		}
+		function calcC(s,dir=1){
+			let row=Math.floor((s-1)/4),
+				tp= (row in [0,1,12]) ? 3 :
+					(row in [3,5,7,9,11]) ? 1 : 2 ;
+			return {
+				"TR":13,
+				"H":(tp&dir)>0,"W":((s-1)%4)<2,
+				"O":s%2===1 ? "W" : "E",
+				"R":dir===2 ? (row+1) : (13-row)
+			};
+		}
+		function calcA(s,dir=1){
+			let row=Math.floor((s-1)/4),
+				tp= (row in [0,1,10,11]) ? 3 :
+					(row in [2,4,6,8]) ? 1 : 2 ;
+			return {
+				"TR":12,
+				"H":(tp&dir)>0,"W":((s-1)%4)<2,
+				"O":s%2===1 ? "E" : "W",
+				"R":dir===1 ? (row+1) : (12-row)
+			};
+		}
+		function calcX(s,dir=1){
+			let row=Math.floor((s-1)/4),
+				tp= (row in [4]) ? 3 :
+					(row in [3,1]) ? 1 : 2 ;
+			return {
+				"TR":5,
+				"H":(tp&dir)>0,"W":((s-1)%4)<2,
+				"O":s%2===1 ? "W" : "E",
+				"R":dir===2 ? (row+1) : (5-row)
+			};
+		}
+		function calc(c,s,dir=1){
+			switch(c){
+			case 2:case 4:case 5:case 6:case 9:case 10:case 11:
+				return calcN(s,dir);
+			case 1: case 7:
+				return calcC(s,dir);
+			case 3: case 8:
+				return calcA(s,dir);
+			case 12:
+				return calcX(s,dir);
+			}
+		}
+
+		M.getInfo=function(evt){
+			let c=parseInt(Piers.DOM.select('[DC="CN"]').textContent),
+				d=parseInt(Piers.DOM.select('[DC="DIR"]').value),
+				s=parseInt(evt.target.textContent),
+				r=calc(c,s,d),
+				msg="";
+			msg+="第"+r.R+"排 (共"+r.TR+"排)\n";
+			msg+="靠"+(r.W?"窗":"道")+" "+(r.H?"有":"無")+"掛勾\n";
+			msg+=(r.O==="E"?"面東":"面西");
+			alert(msg);
+		}
+
+		M.xCabin=function(evt){
+			let ct,cn;
+			if(evt.target){
+				ct=evt.target.getAttribute("CT");
+				cn=evt.target.textContent;
+			}else{
+				ct=evt[1];
+				cn=evt[0];
+			}
+			Piers.DOM.selectAll("[CabinLayout]").forEach(function(e){
+				e.setAttribute("Hide",e.getAttribute("CabinLayout")===ct?"no":"yes");
+			});
+			Piers.DOM.select('[DC="CN"]').textContent=cn;
+		};
+
+		M.onload=function(){
+			this.xCabin([2,"N"]);
+		};
+	})(Main); // }}}
+	</script>
+	<script PierEntrance="Main.onload" PierXMods="Widget" src="http://piersforge.com/js/init.js"></script>
+	<style>
+		table td { text-align:center; width:25%; }
+		table td:hover { background:blue; color:yellow; }
+		table [cabin] td:hover { background:darkgreen; color:white; }
+		[Hide="yes"] { display:none; }
+	</style>
+</head>
+<body>
+	<div style="text-align:right;margin:8px 2.5%;">
+		<select DC="DIR">
+			<option value="1">南下</option>
+			<option value="2">北上</option>
+		</select>
+	</div>
+	<table width="95%" align="center" border="1">
+		<thead>
+			<tr>
+				<th colspan="4">車廂</th>
+			</tr>
+		</thead>
+		<tbody style="background:lightblue" onclick="Main.xCabin(event)"><!--{{{-->
+			<tr>
+				<td CT="C">1</td>
+				<td CT="N">2</td>
+				<td CT="A">3</td>
+				<td CT="N">4</td>
+			</tr>
+			<tr>
+				<td CT="N">5</td>
+				<td CT="N">6</td>
+				<td CT="C">7</td>
+				<td CT="A">8</td>
+			</tr>
+			<tr>
+				<td CT="N">9</td>
+				<td CT="N">10</td>
+				<td CT="N">11</td>
+				<td CT="X">12</td>
+			</tr>
+		</tbody><!--}}}-->
+		<thead>
+			<tr>
+				<th colspan="4">座位 (<span DC="CN"></span>車)</th>
+			</tr>
+		</thead>
+		<tbody CabinLayout="N" onclick="Main.getInfo(event)" style="background:lightgreen"><!--{{{-->
+			<tr>
+				<td>50</td>
+				<td>52</td>
+				<td>51</td>
+				<td>49</td>
+			</tr>
+			<tr>
+				<td>46</td>
+				<td>48</td>
+				<td>47</td>
+				<td>45</td>
+			</tr>
+			<tr>
+				<td>42</td>
+				<td>44</td>
+				<td>43</td>
+				<td>41</td>
+			</tr>
+			<tr>
+				<td>38</td>
+				<td>40</td>
+				<td>39</td>
+				<td>37</td>
+			</tr>
+			<tr>
+				<td>34</td>
+				<td>36</td>
+				<td>35</td>
+				<td>33</td>
+			</tr>
+			<tr>
+				<td>30</td>
+				<td>32</td>
+				<td>31</td>
+				<td>29</td>
+			</tr>
+			<tr>
+				<td>26</td>
+				<td>28</td>
+				<td>27</td>
+				<td>25</td>
+			</tr>
+			<tr>
+				<td>22</td>
+				<td>24</td>
+				<td>23</td>
+				<td>21</td>
+			</tr>
+			<tr>
+				<td>18</td>
+				<td>20</td>
+				<td>19</td>
+				<td>17</td>
+			</tr>
+			<tr>
+				<td>14</td>
+				<td>16</td>
+				<td>15</td>
+				<td>13</td>
+			</tr>
+			<tr>
+				<td>10</td>
+				<td>12</td>
+				<td>11</td>
+				<td>9</td>
+			</tr>
+			<tr>
+				<td>6</td>
+				<td>8</td>
+				<td>7</td>
+				<td>5</td>
+			</tr>
+			<tr>
+				<td>2</td>
+				<td>4</td>
+				<td>3</td>
+				<td>1</td>
+			</tr>
+		</tbody><!--}}}-->
+		<tbody CabinLayout="A" onclick="Main.getInfo(event)" style="background:lightgreen"><!--{{{-->
+			<tr>
+				<td>46</td>
+				<td>48</td>
+				<td>47</td>
+				<td>45</td>
+			</tr>
+			<tr>
+				<td>42</td>
+				<td>44</td>
+				<td>43</td>
+				<td>41</td>
+			</tr>
+			<tr>
+				<td>38</td>
+				<td>40</td>
+				<td>39</td>
+				<td>37</td>
+			</tr>
+			<tr>
+				<td>34</td>
+				<td>36</td>
+				<td>35</td>
+				<td>33</td>
+			</tr>
+			<tr>
+				<td>30</td>
+				<td>32</td>
+				<td>31</td>
+				<td>29</td>
+			</tr>
+			<tr>
+				<td>26</td>
+				<td>28</td>
+				<td>27</td>
+				<td>25</td>
+			</tr>
+			<tr>
+				<td>22</td>
+				<td>24</td>
+				<td>23</td>
+				<td>21</td>
+			</tr>
+			<tr>
+				<td>18</td>
+				<td>20</td>
+				<td>19</td>
+				<td>17</td>
+			</tr>
+			<tr>
+				<td>14</td>
+				<td>16</td>
+				<td>15</td>
+				<td>13</td>
+			</tr>
+			<tr>
+				<td>10</td>
+				<td>12</td>
+				<td>11</td>
+				<td>9</td>
+			</tr>
+			<tr>
+				<td>6</td>
+				<td>8</td>
+				<td>7</td>
+				<td>5</td>
+			</tr>
+			<tr>
+				<td>2</td>
+				<td>4</td>
+			</tr>
+		</tbody><!--}}}-->
+		<tbody CabinLayout="C" onclick="Main.getInfo(event)" style="background:lightgreen"><!--{{{-->
+			<tr>
+				<td>1</td>
+				<td>3</td>
+				<td>4</td>
+				<td>2</td>
+			</tr>
+			<tr>
+				<td>5</td>
+				<td>7</td>
+				<td>8</td>
+				<td>6</td>
+			</tr>
+			<tr>
+				<td>9</td>
+				<td>11</td>
+				<td>12</td>
+				<td>10</td>
+			</tr>
+			<tr>
+				<td>13</td>
+				<td>15</td>
+				<td>16</td>
+				<td>14</td>
+			</tr>
+			<tr>
+				<td>17</td>
+				<td>19</td>
+				<td>20</td>
+				<td>18</td>
+			</tr>
+			<tr>
+				<td>21</td>
+				<td>23</td>
+				<td>24</td>
+				<td>22</td>
+			</tr>
+			<tr>
+				<td>25</td>
+				<td>27</td>
+				<td>28</td>
+				<td>26</td>
+			</tr>
+			<tr>
+				<td>29</td>
+				<td>31</td>
+				<td>32</td>
+				<td>30</td>
+			</tr>
+			<tr>
+				<td>33</td>
+				<td>35</td>
+				<td>36</td>
+				<td>34</td>
+			</tr>
+			<tr>
+				<td>37</td>
+				<td>39</td>
+				<td>40</td>
+				<td>38</td>
+			</tr>
+			<tr>
+				<td>41</td>
+				<td>43</td>
+				<td>44</td>
+				<td>42</td>
+			</tr>
+			<tr>
+				<td>45</td>
+				<td>47</td>
+				<td>48</td>
+				<td>46</td>
+			</tr>
+			<tr>
+				<td>49</td>
+				<td>51</td>
+				<td>52</td>
+				<td>50</td>
+			</tr>
+		</tbody><!--}}}-->
+		<tbody CabinLayout="X" onclick="Main.getInfo(event)" style="background:lightgreen"><!--{{{-->
+			<tr>
+				<td>1</td>
+				<td>3</td>
+				<td>4</td>
+				<td>2</td>
+			</tr>
+			<tr>
+				<td>5</td>
+				<td>7</td>
+				<td>8</td>
+				<td>6</td>
+			</tr>
+			<tr>
+				<td>9</td>
+				<td>11</td>
+				<td>12</td>
+				<td>10</td>
+			</tr>
+			<tr>
+				<td>13</td>
+				<td>15</td>
+				<td>16</td>
+				<td>14</td>
+			</tr>
+			<tr>
+				<td>17</td>
+				<td>19</td>
+				<td>20</td>
+				<td>18</td>
+			</tr>
+		</tbody><!--}}}-->
+	</table>
+</body>
+</html>

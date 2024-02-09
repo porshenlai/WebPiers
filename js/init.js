@@ -3,6 +3,7 @@
 	var R,OBJ,DOM,DATE,Piers,s,i;
 	function log(){ console.log(arguments); }
 	function nf(){ }
+	function xf(){ throw Error("Exception!"); };
 
 	if( !("Promise" in window) ){ // {{{
 		window.Promise = function(rt){
@@ -139,7 +140,7 @@
 				}, 3000 );
 			} );
 		},
-		"call":function(f, a){
+		"call":function( f, a ){
 			switch( typeof( f ) ){
 			case 'function': return f.apply( window, a );
 			case 'string': return OBJ.apply( window, f, a );
@@ -160,7 +161,7 @@
 			console.trace( )
 			throw new Piers.Error(msg);
 		},
-		"log":log, "nf": nf
+		"log":log
 	};	// }}}
 
 	OBJ={ // OBJECT ROUTINES {{{
@@ -185,14 +186,14 @@
 			return Object.keys( o ).length > 0;
 		},
 		"inherit":function( init, protos={}, base=null ){
-			init.prototype=Object.create(base ? base.prototype : null, {
+			init.prototype = Object.create(base ? base.prototype : null, {
 				constructor:{
 					value:init,
 					enumerable:false,
 					writable:true,
 					configurable:true
 				}
-			});
+			} );
 			for( an in protos )
 				init.prototype[an] = protos[an];
 			return init;
@@ -320,7 +321,7 @@
 				SELPAIR.__csp( pe, this.__Doc__[this.value], dv );
 			}
 			rv = []
-			Piers.DOM.selectAll( pe, "select" ).forEach( function( e ){ rv.push(e.value); } );
+			Piers.DOM.selectAll("select", pe).forEach( function( e ){ rv.push(e.value); } );
 			if(evt) evt.stopPropagation();
 			pe.updateValue( rv.join(SELPAIR.SEP) );
 		}, // __sc
@@ -356,7 +357,7 @@
 	}; // }}}
 
 	DOM={ //	DOM : Data Object Model {{{
-		"select":function( root, qs, mode=2 ){
+		"select":function(qs, root=document.body, mode=2){
 			var i;
 			switch(mode){
 			case 2:
@@ -373,7 +374,7 @@
 						return i;
 			}
 		},
-		"selectAll":function( root, qs, mode=2 ){
+		"selectAll":function(qs, root=document.body, mode=2){
 			var r=[],i,s,dir;
 			switch(mode){
 			case 2:
@@ -394,44 +395,6 @@
 				break;
 			}
 			return r;
-		},
-		"find":function( e, cf, axis="parentNode", stop ){
-			console.trace("Warning: replaced by DOM.select( e, qs, mode=8 )");
-			if("X" in cf) stop = cf.X; 
-			var v=cf;
-			if("A" in cf){ cf=function(e){ try{ return e.hasAttribute(v.A); }catch(x){} }; }
-			else if("V" in cf){ cf=function(e){ try{ return v.V in e; }catch(x){} }; }
-			if(stop) while(e && e!=stop){ if( cf(e) ) return e; e = e[axis]; }
-			else while(e){ if( cf(e) ) return e; e = e[axis]; }
-		},
-		"forEach":function(root,qs,cb){
-			console.trace("Warning: replaced by DOM.selectAll( root, qs ).forEach( cb )");
-			var i,s,r;
-			if( !cb ){ cb = qs; qs = undefined; }
-			if( !root ) root = document;
-			if( !root.nodeType ){ qs = root; root = document }
-			try{
-				if( qs ){
-					s = root.querySelectorAll(qs) || [];
-					for(i=0;i<s.length;i++){ r = cb(s[i],i,s); if( r ) return r; }
-				}else for( s=root.firstChild; s; s=s.nextSibling ){ r = cb(s,i,root); if( r !== undefined ) return r; }
-			}catch(e){ }
-			return this;
-		},
-		"reduce":function(root,qs,cb,rv){
-			console.trace("Warning: replaced by DOM.selectAll( root, qs ).reduce( cb, rv )");
-			var i,s,r;
-			if( !cb ){ cb = qs; qs = undefined; }
-			if( !root ) root = document;
-			if( !root.nodeType ){ qs = root; root = document }
-			try{
-				if( qs ){
-					s = root.querySelectorAll(qs) || [];
-					for( i=0; i<s.length; i++ ) rv = cb( rv, s[i], i, s );
-				}else for( s=root.firstChild; s; s=s.nextSibling ) rv = cb( rv, s, i, root );
-				return rv;
-			}catch(e){ }
-			return this;
 		},
 		"getClasses":function( e ){
 			return (e.getAttribute("class")||"").split(/\s+/).filter(function(n){ return n; });
@@ -560,10 +523,25 @@
 //	.setResult(value)
 //	.setException(exception)
 //	.get()
-	function F(){ var T = this; this.P = new Promise(function(or,oe){ T.ORE=[or,oe]; }); }
-	F.prototype.get=function(){ return this.P; };
-	F.prototype.setResult=function(val){ if(this.ORE) this.ORE[0](val); this.ORE=undefined; }
-	F.prototype.setException=function(val){ if(this.ORE) this.ORE[1](val); this.ORE=undefined; }
+	function F () {
+		var T = this;
+		this.P = new Promise(function(or, oe){
+			T.ORE=[or,oe];
+		});
+	}
+	F.prototype.get=function(){
+		return this.P;
+	};
+	F.prototype.setResult=function (val) {
+		if(this.ORE)
+			this.ORE[0](val);
+		this.ORE=undefined;
+	};
+	F.prototype.setException=function (val) {
+		if(this.ORE)
+			this.ORE[1](val);
+		this.ORE=undefined;
+	};
 //	}}}
 
 //	M : Message {{{
@@ -746,7 +724,7 @@
 	U.pathjoin = function( parts, sep="/" ){
 		parts=parts.join(sep)
 		let x=/([^:\/\/]+):\/\/(.*)/.exec(parts);
-		if(x){ prefix=x[1]+"://"; parts=x[2]; }
+		if(x){ prefix=x[1]+"://"; parts=x[2]; } else prefix="";
 		return prefix+parts.replace( new RegExp(sep+'{1,}','g'), sep);
 	};
 	U.abs = function( url ){
@@ -808,7 +786,7 @@
 					or( JSON.parse(e.target.result) );
 				});
 				r.readAsText(self.B); break;
-			case "image/jpeg": case "image/png": case "image/gif":
+			case "image/jpeg": case "image/png": case "image/gif": case "application/pdf":
 				self.getDataURL().then(or,oe); break;
 			default:
 				r.addEventListener("load",function(e){
@@ -912,7 +890,8 @@
 		"M":M,	// Message
 		"U":U,	// URL
 		"_":R,	// General Routines
-		"nf":nf
+		"nf":nf,// null function
+		"xf":xf	// exception function
 	};
 
 	if( (s=document.currentScript) && (i=/(.*)init.js/.exec(s.getAttribute("src")||""))
