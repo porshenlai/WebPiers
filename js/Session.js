@@ -204,7 +204,7 @@
 			"authenticate":function (user, pass) {
 				var self=this;
 				return new Promise(function (or,oe) {
-					let idx=null;//localStorage.getItem(user);
+					let idx=JSON.parse(localStorage.getItem(user));
 					if (idx) {
 						if (idx.pass!==pass)
 							return oe({"user":user});

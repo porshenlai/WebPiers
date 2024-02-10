@@ -1,3 +1,7 @@
+body,input,select {
+	font-size:5vw;
+}
+
 .PsFull {
 	position: absolute;
 	left: 0;

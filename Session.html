@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+	<meta http-equiv="X-UA-Compatible" content="IE=edge,Chrome=1"/>
+	<title>Cyberpiers</title>
+	<link rel="icon" type="image/png" href="data/favicon.png"/>
+	<script>
+	var Main={
+		onload:function(){
+			var self=this;
+			self.H=new Piers.Session.LocalHome();
+		},
+		login:function(fe){
+			let self=this;
+			fe=(new Piers.Widget.Form(fe)).get();
+			self.H.authenticate(
+				fe.user,
+				Piers.Session.sha(fe.password)
+			).then(function(){
+				self.H.request("save:test.txt","HELLO WORLD")
+				.then(function(){
+					self.H.request("list")
+					.then(function(rst){
+						console.log("LIST:",rst);
+					},console.log);
+				},console.log);
+			},function(x){
+				alert("Failed to login as "+x.user);
+			});
+
+			return false;
+		}
+	};
+	</script>
+	<script PierEntrance="Main.onload" PierXMods="Widget,Session" src="js/init.js"></script>
+</head>
+<body>
+	<div>
+		<form onsubmit="return Main.login(this);">
+			<div style="margin:16px 2px">User:<input type="text" an="user:Value"/></div>
+			<div style="margin:16px 2px">Pass:<input type="password" an="password:Value"/></div>
+			<div style="margin:16px 2px"><input type="submit"/></div>
+		</form>
+	</div>
+</body>
+</html>
