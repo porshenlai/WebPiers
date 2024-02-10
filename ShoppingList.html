@@ -28,20 +28,28 @@
 			EUR:34,
 			CZK:1.5,
 			DKR:5,
-			SER:3
+			SER:3,
+			TWD:1
 		},
 		BlankReceipt:{
-			"Unit":"EUR","RNO":"current",
-			"Total":0,"TotalTD":0,"Items":[]
+			"RNO":"current",
+			"Total":{},"TotalS":"","TotalT":0,"Items":[]
 		},
 		redraw:function(){
-			let self=this;
+			let self=this, ct, cts;
 			self.Form=new Piers.Widget.Form(Piers.DOM.select("#Receipt",document.body));
-			self.Receipt.Total=self.Receipt.Items.reduce(function(r,v){
-				return r+parseFloat(v.LD);
-			},0);
-			self.Receipt.TotalTD=Math.floor(100*self.Receipt.Total*self.TWDRate[self.Receipt.Unit])/100;
-			self.Receipt.Total=Math.floor(100*self.Receipt.Total)/100;
+			cts=self.Receipt.Items.reduce(function(r,v){
+				if(!(v.ST in r)) r[v.ST]=0;
+				r[v.ST]+=parseFloat(v.SA);
+				return r;
+			},{});
+			self.Receipt.TotalS=[];
+			self.Receipt.TotalT=0;
+			for(ct in cts){
+				self.Receipt.TotalS.push({"A":cts[ct],"T":ct});
+				self.Receipt.TotalT+=Math.floor(100*cts[ct]*self.TWDRate[ct])/100;
+			}
+			self.Receipt.TotalT=Math.floor(100*self.Receipt.TotalT)/100;
 			self.Form.set(
 				self.Receipt
 			).then(function(){
@@ -59,16 +67,13 @@
 			let c=document.getElementById("Calc"),
 				d=c.Widget.get(),
 				w=document.getElementById("Receipt").Widget;
-			if(!d.LD) return;
-			c.reset(); c.Widget.set({"I":"","TD":0}).then(Piers.nf,Piers.nf);
-			d.LD=parseFloat(d.LD);
-			d.TD=Math.floor(100*d.LD*this.TWDRate[this.Receipt.Unit])/100;
+			if(!d.SA) return;
+			c.reset(); c.Widget.set({"I":"","ST":d.ST,"SA":0,"TA":0}).then(Piers.nf,Piers.nf);
+			d.SA=parseFloat(d.SA);
+			d.TA=Math.floor(100*d.SA*this.TWDRate[d.ST])/100;
 			if(!d.I) d.I=(new Date).getTime().toString(36);
 			if(!d.T) d.T="未設定";
-			this.Receipt.Items=this.Receipt.Items.filter(function(v){
-				console.log(v,v.I,d.I);
-				return v.I!==d.I;
-			});
+			this.Receipt.Items=this.Receipt.Items.filter(function(v){ return v.I!==d.I; });
 			this.Receipt.Items.unshift(d);
 			this.redraw();
 		},
@@ -93,14 +98,22 @@
 			this.redraw();
 		},
 		onload:function(){
-			let self=this;
+			let self=this,cts=Piers.DOM.select('select[an="ST:Value"]');
 			new Piers.Widget.Form(document.getElementById("Calc"));
 			new Piers.Widget.Form(document.getElementById("Receipt"));
+			for (ct in self.TWDRate) {
+				cts.appendChild(Piers.DOM.create({
+					T:"option",
+					A:{"value":ct},
+					C:[ct]
+				}));
+			}
 			self.DB=new Piers.Session.LocalHome();
 			self.DB.authenticate("guest","itsme").then(function(){
 				self.DB.request("load:current",JSON.stringify(self.BlankReceipt))
 				.then(function(doc){
-					self.Receipt=JSON.parse(doc);
+					//self.Receipt=JSON.parse(doc);
+					self.Receipt=self.BlankReceipt;
 					self.redraw();
 				},console.log);
 			}, function(x){
@@ -118,8 +131,8 @@
 			<div class="PsSpanRow">
 				<input type="hidden" an="I:Value"/>
 				<input class="PsFill" type="text" an="T:Value"/>
-				EUR: <input class="PsFill" type="number" value="0" step="0.01" an="LD:Value"/>
-				TWD: <span an="TD:text"></span>
+				<select an="ST:Value"></select>: <input class="PsFill" type="number" value="0" step="0.01" an="SA:Value"/>
+				TWD: <span an="TA:text"></span>
 			</div>
 		</form>
 	</div>
@@ -131,20 +144,23 @@
 		<table border="1" cellspacing="0" width="100%" align="center">
 			<thead><tr>
 				<th>名稱</th>
-				<th an="Unit:Text"></th>
-				<th>TWD</th>
+				<th>外幣</th>
+				<th>臺幣</th>
 				<th width="1px"><button onclick="Main.add()">新增</button></th>
 			</tr></thead>
 			<tbody an="Items:List"><tr>
-				<td an="T:Text"></td>
-				<td><button onclick="Main.edit(this)" an="LD:Text"></button></td>
-				<td an="TD:Text"></td>
+				<td an="T:Text" onclick="Main.edit(this)"></td>
+				<td><span an="SA:Text"></span> <span an="ST:Text"></span></td>
+				<td an="TA:Text"></td>
 				<td><button onclick="Main.remove(this)">刪除</button></td>
 			</tr></tbody>
 			<tbody><tr>
 				<th>總計</th>
-				<td an="Total:Text"></td>
-				<td an="TotalTD:Text"></td>
+				<td an="TotalS:List"><div style="background:white;">
+					<span an="A:text"></span>
+					<span an="T:text"></span>
+				</div></td>
+				<td an="TotalT:Text"></td>
 				<td><button onclick="Main.submit()">結帳</button></td>
 			</tr></tbody>
 		</table>
