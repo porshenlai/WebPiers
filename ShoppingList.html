@@ -41,6 +41,7 @@
 				return r+parseFloat(v.LD);
 			},0);
 			self.Receipt.TotalTD=Math.floor(100*self.Receipt.Total*self.TWDRate[self.Receipt.Unit])/100;
+			self.Receipt.Total=Math.floor(100*self.Receipt.Total)/100;
 			self.Form.set(
 				self.Receipt
 			).then(function(){
@@ -96,12 +97,15 @@
 			new Piers.Widget.Form(document.getElementById("Calc"));
 			new Piers.Widget.Form(document.getElementById("Receipt"));
 			self.DB=new Piers.Session.LocalHome();
-			self.DB.authenticate("guest","itsme");
-			this.DB.request("load:current",JSON.stringify(this.BlankReceipt))
-			.then(function(doc){
-				self.Receipt=JSON.parse(doc);
-				self.redraw();
-			},console.log);
+			self.DB.authenticate("guest","itsme").then(function(){
+				self.DB.request("load:current",JSON.stringify(self.BlankReceipt))
+				.then(function(doc){
+					self.Receipt=JSON.parse(doc);
+					self.redraw();
+				},console.log);
+			}, function(x){
+				alert("Login failed as "+x.user);
+			});
 		}
 	};
 	</script>
@@ -123,7 +127,6 @@
 	<div id="Receipt">
 		<div class="PsSpanRow">
 			<span an="FN:text"></span>
-			<button></button>
 		</div>
 		<table border="1" cellspacing="0" width="100%" align="center">
 			<thead><tr>
