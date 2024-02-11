@@ -59,8 +59,8 @@
 		calc:function(fm){
 			fm=new Piers.Widget.Form(fm);
 			let d=fm.get();
-			d.LD=parseFloat(d.LD);
-			d.TD=Math.floor(100*d.LD*this.TWDRate[this.Receipt.Unit])/100;
+			d.SA=parseFloat(d.SA);
+			d.TA=Math.floor(100*d.SA*this.TWDRate[d.ST])/100;
 			fm.set(d).then(Piers.nf,Piers.nf);
 		},
 		add:function(fm){
@@ -98,16 +98,14 @@
 			this.redraw();
 		},
 		onload:function(){
-			let self=this,cts=Piers.DOM.select('select[an="ST:Value"]');
+			let self=this;
 			new Piers.Widget.Form(document.getElementById("Calc"));
 			new Piers.Widget.Form(document.getElementById("Receipt"));
-			for (ct in self.TWDRate) {
-				cts.appendChild(Piers.DOM.create({
-					T:"option",
-					A:{"value":ct},
-					C:[ct]
-				}));
-			}
+			new Piers.Widget.List(Piers.DOM.select('select[an="ST:Value"]'),"oan")
+			.set(Piers.OBJ.reduce(self.TWDRate,function(r,v,k){
+				r.push({"V":k,"L":k});
+				return r;
+			},[])).then(console.log,console.log);
 			self.DB=new Piers.Session.LocalHome();
 			self.DB.authenticate("guest","itsme").then(function(){
 				self.DB.request("load:current",JSON.stringify(self.BlankReceipt))
@@ -131,7 +129,10 @@
 			<div class="PsSpanRow">
 				<input type="hidden" an="I:Value"/>
 				<input class="PsFill" type="text" an="T:Value"/>
-				<select an="ST:Value"></select>: <input class="PsFill" type="number" value="0" step="0.01" an="SA:Value"/>
+				<select an="ST:Value">
+					<option oan="L:Text"></option>
+				</select>:
+				<input class="PsFill" type="number" value="0" step="0.01" an="SA:Value"/>
 				TWD: <span an="TA:text"></span>
 			</div>
 		</form>
