@@ -198,31 +198,30 @@
 			"set": function (d={}) {	// {{{
 				let self=this;
 				return new Promise(function(or, oe){
-					(function scan(p) {
-						for (let e=p.firstChild;e;e=e.nextSibling) {
-							if (1!==e.nodeType) continue;
-							let an=e.getAttribute(self.Tag);
-							if (an)
-								an.split(";").forEach(function(an) {
-									let dp=(an=an.split(":")).shift(), dd=Piers.OBJ.get(d,dp,undefined);
-									if (an[0] in Widgets) {
-										if (!e.Widget) new Widgets[an[0]](e,self.Tag);
-										if (dd===undefined)
-											e.Widget.clear();
-										else
-											e.Widget.set(dd);
-									} else {
-										if (dd===undefined)
-											generic_clear(e,an);
-										else
-											generic_set(e,dd,an);
-										scan(e);
-									}
-								});
-							else scan(e);
-						}
-						or(self.__Doc__ = d);
+					(function scan(e) {
+						let an=e.getAttribute(self.Tag),close=false;
+						if (an)
+							an.split(";").forEach(function(an) {
+								let dp=(an=an.split(":")).shift(), dd=Piers.OBJ.get(d,dp,undefined);
+								if (an[0] in Widgets) {
+									if (!e.Widget) new Widgets[an[0]](e,self.Tag);
+									if (dd===undefined)
+										e.Widget.clear();
+									else
+										e.Widget.set(dd);
+									close=true;
+								} else {
+									if (dd===undefined)
+										generic_clear(e,an);
+									else
+										generic_set(e,dd,an);
+								}
+							});
+						if(!close)
+							for (let c=e.firstChild;c;c=c.nextSibling)
+								if (1===c.nodeType) scan(c);
 					})(self.E);
+					or(self.__Doc__ = d);
 				});
 			},	// }}}
 			"get": function (d) {	// {{{
