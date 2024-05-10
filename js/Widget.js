@@ -93,6 +93,97 @@
 	}	// }}}
 
 	let Widgets={
+		"DB":{},
+		"UploadBox" : Piers.OBJ.inherit(function (e) {	// {{{
+			Widgets.DB[e.WidgetID = Piers.getUID()] = this;
+			Object.assign((this.E = e).style,{
+				"backgroundRepeat": "no-repeat",
+				"backgroundPosition": "50% 50%",
+				"backgroundSize": "contain"
+			});
+		}, {
+			"set": async function () {
+				let d,im;
+				d = await Piers.U.Data.fromUpload("image/*");
+				this.E.style.backgroundImage="url("+await d[0].getDataURL()+")";
+				return this.E.value = d[0].B;
+			},
+			"get": function () {
+				return this.E.value;
+			}
+		}),	// }}}
+		"OptionBox" : Piers.OBJ.inherit(function (e, value) {	// {{{
+			Widgets.DB[e.WidgetID = Piers.getUID()] = this;
+			this.E = e;
+			this.OptKeys = [];
+			for(let i=0,s=this.E.querySelectorAll("[PsOpt]"); i<s.length; i++)
+				this.OptKeys.push(s[i].getAttribute("PsOpt").split(":")[0]);	
+			this.E.value = (value || this.OptKeys[0]);
+			this.__sync__();
+		}, {
+			"set": function (value) {
+				Piers.assert(this.OptKeys.indexOf(value) >= 0, "No such key");
+				this.E.value = value;
+				this.__sync__();
+			},
+			"get": function () {
+				return this.E.value;
+			},
+			"rotate": function (shift=1) {
+				let i = this.OptKeys.indexOf(this.E.value);
+				this.E.value = this.OptKeys[(i+shift) % this.OptKeys.length]
+				this.__sync__();
+			},
+			"__sync__": function () {
+				for (let i = 0, s = this.E.querySelectorAll("[PsOpt]"); i < s.length; i++) {
+					let k=s[i].getAttribute("PsOpt").split(":")[0];
+					if (k!==this.E.value) k+=":hide";
+					s[i].setAttribute("PsOpt",k);
+				}
+			}
+		}),	// }}}
+		"ComboSelect" : Piers.OBJ.inherit(function (e, options = []) {	// {{{
+			Widgets.DB[e.WidgetID = Piers.getUID()] = this;
+			(this.E = e).value = [];
+			this.config(options);
+			this.E.addEventListener("change", function (evt) {
+				let self=Widgets.DB[e.WidgetID], i, s;
+				for (
+					i = 0, s = e.querySelectorAll("select"), self.E.value=[];
+					i<s.length && s[i] !== evt.target;
+					i++
+				)	self.E.value.push(s[i].value);
+				self.E.value.push(s[i].value);
+				console.log("DEBUG",self.E.value);
+				self.__sync__(0, s, self.Options, self.E.value);
+			});
+		}, {
+			"set": function (v) {
+				this.__sync__(0, this.E.querySelectorAll("select"), this.Options, this.E.value = v);
+			},
+			"get": function () {
+				return this.E.value;
+			},
+			"config": function (options) {
+				this.__sync__(0, this.E.querySelectorAll("select"), this.Options = options, this.E.value);
+			},
+			"__sync__": function (i,s,d,v) {
+				try{
+					Piers.assert(s[i] && d,"Data error("+i+")");
+					let self = this, p = (new Piers.DOM(s[i])).clear();
+					p.add((Array.isArray(d) ? d : Object.keys(d)).reduce(function (r, v) {
+						v=v.split('\r');
+						if(v.length<2) v.push(v[0]);
+						return r + '<option value="' + v[0] + '">' + v[1] + '</option>'
+					}, "")).then(function(){;
+						if(v[i]) s[i].value=v[i];
+						v[i]=s[i].value;
+						self.__sync__(i+1, s, d[s[i].value], v);
+					}, Piers.nf);
+				}catch(x){ }
+			}
+		}),	// }}}
+
 		// [{"A":123,"Z":789},...] => <tbody><tr>....</tr></tbody>
 		"List": Piers.OBJ.inherit(function (e, tagname="an") {
 			e.Widget=this;

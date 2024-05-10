@@ -148,8 +148,8 @@
 				}, 3000 );
 			} );
 		},
-		"fetch": async function (url) {
-			const response=await fetch(url), reader=response.body.getReader();
+		"fetch": async function (url, options=undefined) {
+			const response=await fetch(url,options), reader=response.body.getReader();
 			let c,s="";
 			while( !(c=await reader.read()).done )
 				s += await new TextDecoder("utf-8").decode(c.value);
@@ -196,6 +196,22 @@
 		"deepCopy":function( o ){
 			return JSON.parse( JSON.stringify(o) );
 		},
+		"diff":function (sd, td) { // {{{
+			let changes = {};
+			(function t(o, n, pfx = "") {
+				let x = {}, kpfx;
+				for (k in n) x[k] = true;
+				for (k in o) x[k] = true;
+				for (k in x) {
+					kpfx = pfx + (pfx ? "." : "") + k
+					if ('object' === typeof (n[k]) && 'object' === typeof (o[k]))
+						t(o[k], n[k], kpfx);
+					else if (n[k] !== o[k])
+						changes[kpfx] = { "O": o[k], "N": n[k] };
+				}
+			})(sd, td);
+			return changes;
+		}, // }}}
 		"isEmpty":function( o ){
 			return Object.keys( o ).length > 0;
 		},
@@ -302,75 +318,33 @@
 		}
 	}; // }}}
 
-	var SELPAIR={ // {{{
-		"SEP":"-",
-		"decodeKV":function( kvs ){
-			return kvs.split("\r");
+	Object.assign(DOM = OBJ.inherit(function( e ){ // DOM : Data Object Model
+		this.E = e;
+	},{	// prototypes
+		// {{{
+		"select": function (qs) {
+			Piers.assert(qs = DOM.select(qs, root=this.E,mode=2), "Not found");
+			return new DOM(qs);
 		},
-		"decodeKVR":function( r, kvs ){
-			kvs = SELPAIR.decodeKV( kvs );
-			r[kvs[1]||kvs[0]] = kvs[0];
-			return r;
+		"select8": function (qs) {
+			Piers.assert(qs = DOM.select(qs, root=this.E,mode=8), "Not found");
+			return new DOM(qs);
 		},
-		"__so":function(e,d,dv){
-			if( Array.isArray(d) )
-				d = d.reduce(SELPAIR.decodeKVR,{});
-			while( e.firstChild ) e.removeChild( e.firstChild );
-			for( k in d )
-				e.appendChild( Piers.DOM.create(
-					(function(l,v){
-						return { "T":"option", "C":[l], "A":{"value":v} };
-					})( k, (function(v){
-						if( "object" === typeof(v) && undefined in v )
-							return v[undefined];
-						return v;
-					})(d[k]) )
-				) );
-			if(dv) e.value = dv;
-		}, // __opts
-		"__sc":function( evt, dv=[] ){
-			var pe = this.parentNode,rv;
-			while( this.nextSibling ) pe.removeChild( this.nextSibling );
-			if( this.__Doc__ && this.value in this.__Doc__ ){
-				SELPAIR.__csp( pe, this.__Doc__[this.value], dv );
-			}
-			rv = []
-			Piers.DOM.selectAll("select", pe).forEach( function( e ){ rv.push(e.value); } );
-			if(evt) evt.stopPropagation();
-			pe.updateValue( rv.join(SELPAIR.SEP) );
-		}, // __sc
-		"__csp":function( e, d, dv=[] ){
-			var doc = {}, dd=[], se = Piers.DOM.create({"T":"select"}), k, kv;
-			if( !Array.isArray(d) ){
-				for( k in d ){
-					kv = SELPAIR.decodeKV( k );
-					if( "object" === typeof(d[k]) ) doc[kv[0]] = d[k];
-					dd.push(k);
-				}
-				if( Object.keys(doc) ) se.__Doc__ = doc;
-				SELPAIR.__so(se,dd,dv.shift());
-			}else this.__so(se, d, dv.shift());
-			se.addEventListener( "change", SELPAIR.__sc );
-			e.appendChild(se);
-			SELPAIR.__sc.call(se,undefined,dv);
-		}, // __csp
-		"init":function( e, d, dv, sep ){
-			if( "SELECT" === e.tagName || "DATALIST" === e.tagName )
-				return SELPAIR.__so( e, d, dv );
-			e.updateValue = function( val ){
-				if( e.value !== val ){
-					e.value = val;
-					while( e.firstChild ) e.removeChild( e.firstChild );
-					SELPAIR.__csp( e, d, val.split(SELPAIR.SEP) );
-					Piers.DOM.sendEvent( e, "change", {"bubbles":true} );
-				}
-			};
-			while( e.firstChild ) e.removeChild( e.firstChild );
-			SELPAIR.__csp( e, d, dv );
-		} // init
-	}; // }}}
-
-	DOM={ //	DOM : Data Object Model {{{
+		"selectAll": function (qs) { return DOM.selectAll(qs, root=this.E); },
+		"read": function (an) { return DOM.read(this.E, an); },
+		"write": function (d, an) { return DOM.write(this.E, d, an); },
+		"add": async function (html, reverse = false) {
+			if (!html) return false;
+			let be = await DOM.load(html, type=html.startsWith("<") ? "text/html" : "url");
+			while(ne = be.firstChild) if (ne.nodeType==1) {
+				if (reverse) this.E.insertBefore(ne, this.E.firstChild);
+				else this.E.appendChild(ne);
+			} else be.removeChild(ne);
+			return this;
+		},
+		"clear": function () { DOM.clear(this.E); return this; }
+		// }}}
+	}),{ // static routines
 		"select":function (qs, root=document.body, mode=2) { // {{{
 			var i;
 			switch(mode){
@@ -492,6 +466,7 @@
 			e.style.backgroundImage="conic-gradient("+s+")";
 			return e;
 		},	// }}}
+
 		"create":function (pf){ // {{{
 			// pf={"T":"","Q":"qs","A":{"border":"1"},"S":{"width":"30%"},"E":{"click":cb,...},"C":["Text",{...}]}
 			var self=this,e,i;
@@ -515,16 +490,33 @@
 				dom=await Piers.U.create( src ).get();
 				break;
 			case "text/html":
-				dom=(new DOMParser()).parseFromString(html,"text/html");
+				dom=(new DOMParser()).parseFromString(src,"text/html");
 				break;
 			}
-			if(!dom) throw new Error("parameter error");
+			Piers.assert(dom, "Parameter Error");
 			return dom.querySelector("body");
 		},	// }}}
 		"clear":function (e) { // {{{
 			while( e.firstChild ) e.removeChild( e.firstChild );
 		},	// }}}
-		"bind":function( en, eh, e=undefined ){
+		"maskOpt":function( mask, value="hide", root=document.body, atag="PsOpt" ){ // {{{
+			// maskOpt(5, "hide", atag="PsOpt")
+			// maskOpt(-5, "hide", atag="PsOpt")
+			let i,s=root.querySelectorAll("["+atag+"]"),mv;
+			if(mask>=0){
+				for(i=0;i<s.length;i++){
+					mv=s[i].getAttribute("PsOpt").split(":")[0]
+					s[i].setAttribute("PsOpt",(parseInt(mv)&mask) > 0 ? (mv+":"+value) : mv);
+				}
+			}else{
+				mask=-mask;
+				for(i=0;i<s.length;i++){
+					mv=s[i].getAttribute("PsOpt").split(":")[0]
+					s[i].setAttribute("PsOpt",(parseInt(mv)&mask) == 0 ? (mv+":"+value) : mv);
+				}
+			}
+		},	// }}}
+		"bind":function( en, eh, e=undefined ){ // {{{
 			try {
 				e = e||document.currentScript.parentNode;
 				e.addEventListener( en, function(evt){
@@ -537,7 +529,10 @@
 					});
 				} );
 			}catch(e){ console.log("EX:Piers.DOM.bind:"+e.toString()); }
-		},
+		}, // }}}
+		"clear":function (e) { // {{{
+			while (e.firstChild) e.removeChild(e.firstChild);
+		}, // }}}
 		"evalScript":function (se) { // {{{
 			var p,x,s;
 			p = se.parentNode;
@@ -545,7 +540,7 @@
 			s = DOM.create({"T":"script","V":{"text":se.text}});
 			p.removeChild(se);
 			p.insertBefore(s,x);
-		},	// }}}
+		}, // }}}
 		"sendEvent":function (to, name, args) { // {{{
 			var x = {};
 			args = Object.assign({
@@ -559,11 +554,10 @@
 			x.Event.complete = function( ){ return x.Block ? x.Block : new Promise(function(or,oe){ or(); }); };
 			to.dispatchEvent( x.Event );
 			return x.Event;
-		},	// }}}
+		}, // }}}
 		"isContained":function (p, c) { for(;c&&p!==c;c=c.parentNode); return !!c; },
-		"isSibling":function (a, b) { return a.parentNode === b.parentNode; },
-		"initSelect":SELPAIR.init
-	}; //	}}}
+		"isSibling":function (a, b) { return a.parentNode === b.parentNode; }
+	});	// DOM
 
 	DATE={ // {{{
 		"toString":function(y,m,d){
@@ -910,6 +904,8 @@
 	};
 // }}}
 
+	let UID_COUNT=0;
+
 	Piers=window.Piers={
 		"__LIBS__":{},
 		"require":function(u){
@@ -938,6 +934,15 @@
 				return this.info;
 			}
 		}, Error ),
+
+		"assert" : function (rst, msg) {
+			if(!rst) throw new Error(msg);
+		},
+
+		"getUID" : function () {
+			UID_COUNT++
+			return ((new Date()).getTime()*1000+(UID_COUNT%1000)).toString(36);
+		},
 
 		"createPromise":function( rv ){
 			var r,x={};
