@@ -1,99 +1,25 @@
 (function(Return){
+	let Template, Widgets;
 
-	function generic_clear(e, tp) {	// {{{
-		let t;
-		switch(tp[0]){
-		case "T": 
-		case "Text": case "text":
-			e.textContent="";
-			break;
-		case "class": case "src": case "activeMode":
-		case "Attribute": case "attribute":
-			e.removeAttribute({
-				"class":"class",
-				"src":"src",
-				"activeMode":"activeMode",
-				"Attribute":"class",
-				"attribute":"class"
-			}[tp[0]]) ;
-			break;
-		case "V": case "Val":
-		case "Value": case "value":
-			t=tp[1]||"value";
-			if ("function"===typeof(e[t]))
-				e[t](null);
-			else
-				delete e[t];
-			break;
-		case "BG":
-			delete e.style.backgroundImage;
-			break;
-		case "Style": case "style":
-			delete e.style[tp[1]||"display"];
-			break;
-		}
-	}	// }}}
+	Template = Piers.OBJ.inherit(function(e){
+		Widgets.DB[e.WidgetID = Piers.getUID()] = this;
+		(this.E = e).value = "";
+	},{
+		"set": function(d){ this.E.value = d ; return this; },
+		"get": function(){ return this.E.value; },
+		"clear": function(){ this.E.value = ""; return this; }
+	});
 
-	function generic_set(e, d, tp) {	// {{{
-		switch(tp[0]){
-		case "T": 
-		case "Text": case "text":
-			e.textContent=d;
-			break;
-		case "class": case "src": case "activeMode":
-		case "Attribute": case "attribute":
-			e.setAttribute({
-				"class":"class",
-				"src":"src",
-				"activeMode":"activeMode",
-				"Attribute":"class",
-				"attribute":"class"
-			}[tp[0]], d) ;
-			break;
-		case "V": case "Val":
-		case "Value": case "value":
-			if (e.updateValue)
-				e.updateValue(d);
-			else
-				e[tp[1]||"value"]=d;
-			break;
-		case "BG":
-			e.style.backgroundImage="url("+d+")";
-			break;
-		case "Style": case "style":
-			e.style[tp[1]||"display"]=d;
-			break;
-		}
-	}	// }}}
-
-	function generic_get(e, tp) {	// {{{
-		let t;
-		switch(tp[0]){
-		case "T": case "Text":
-			return e.textContent;
-		case "Attribute":
-			return e.getAttribute({
-				"class":"class",
-				"src":"src",
-				"activeMode":"activeMode",
-				"Attribute":"class",
-				"attribute":"class"
-			}[tp[0]]) ;
-		case "V": case "Val": case "Value":
-			t=tp[1]||"value"
-			if ("function"===typeof(e[t]))
-				return e[t]();
-			return e[t];
-		case "BG":
-			t=/^url(.*)$/.exec(e.style.backgroundImage);
-			return t ? t[1] : e.style.backgroundImage;
-		case "Style": case "style":
-			return e.style[tp[1]||"display"];
-		}
-	}	// }}}
-
-	let Widgets={
+	Widgets = {
 		"DB":{},
+		"query": function(e){
+			if (!e.WidgetID)
+				e = Piers.DOM(e).find((i)=>i.WidgetID);
+			return this.DB[e.WidgetID];
+		},
+		"Template": Template,
+
+/*
 		"UploadBox" : Piers.OBJ.inherit(function (e) {	// {{{
 			Widgets.DB[e.WidgetID = Piers.getUID()] = this;
 			Object.assign((this.E = e).style,{
@@ -121,13 +47,13 @@
 			this.E.value = (value || this.OptKeys[0]);
 			this.__sync__();
 		}, {
+			"get": function () {
+				return this.E.value;
+			},
 			"set": function (value) {
 				Piers.assert(this.OptKeys.indexOf(value) >= 0, "No such key");
 				this.E.value = value;
 				this.__sync__();
-			},
-			"get": function () {
-				return this.E.value;
 			},
 			"rotate": function (shift=1) {
 				let i = this.OptKeys.indexOf(this.E.value);
@@ -142,52 +68,70 @@
 				}
 			}
 		}),	// }}}
-		"ComboSelect" : Piers.OBJ.inherit(function (e, options = []) {	// {{{
-			Widgets.DB[e.WidgetID = Piers.getUID()] = this;
-			(this.E = e).value = [];
-			this.config(options);
+*/
+
+		"ComboSelect" : Piers.OBJ.inherit(function (e) {	// {{{
+			Template.apply(this, [e]);
+			this.E.value = [];
 			this.E.addEventListener("change", function (evt) {
-				let self=Widgets.DB[e.WidgetID], i, s;
-				for (
-					i = 0, s = e.querySelectorAll("select"), self.E.value=[];
-					i<s.length && s[i] !== evt.target;
-					i++
-				)	self.E.value.push(s[i].value);
-				self.E.value.push(s[i].value);
-				console.log("DEBUG",self.E.value);
-				self.__sync__(0, s, self.Options, self.E.value);
+				let self=Widgets.query(evt.target), i, s=[];
+				self.E.value=[];
+				self.E.value = Piers.DOM(self.E).reduce(function(r, e){
+					s.push(e);
+					r.push(e.value);
+					return r;
+				}, "select", []);
+				self.__sync__(0, s, self.Options||[], self.E.value);
+				evt.preventDefault();
 			});
 		}, {
-			"set": function (v) {
-				this.__sync__(0, this.E.querySelectorAll("select"), this.Options, this.E.value = v);
-			},
-			"get": function () {
-				return this.E.value;
-			},
 			"config": function (options) {
 				this.__sync__(0, this.E.querySelectorAll("select"), this.Options = options, this.E.value);
+				return this;
+			},
+			"set": function (v) {
+				this.__sync__(0, this.E.querySelectorAll("select"), this.Options, this.E.value = v);
+				return this;
 			},
 			"__sync__": function (i,s,d,v) {
 				try{
 					Piers.assert(s[i] && d,"Data error("+i+")");
-					let self = this, p = (new Piers.DOM(s[i])).clear();
-					p.add((Array.isArray(d) ? d : Object.keys(d)).reduce(function (r, v) {
-						v=v.split('\r');
-						if(v.length<2) v.push(v[0]);
-						return r + '<option value="' + v[0] + '">' + v[1] + '</option>'
-					}, "")).then(function(){;
-						if(v[i]) s[i].value=v[i];
-						v[i]=s[i].value;
-						self.__sync__(i+1, s, d[s[i].value], v);
-					}, Piers.nf);
+					let self = this, db={}, p = (new Piers.DOM(s[i])).clear();
+					(Array.isArray(d) ? d : Object.keys(d)).reduce(function (p, v) {
+						let x=v.split('\r');
+						if(x.length<2) x.push(x[0]);
+						db[x[0]]=v;
+						p.add({"T":"option","A":{"value":x[0]},"C":[x[1]]});
+						return p;
+					}, p);
+					if(v[i]) s[i].value=v[i];
+					v[i]=s[i].value;
+					self.__sync__(i+1, s, d[db[s[i].value]], v);
 				}catch(x){ }
 			}
-		}),	// }}}
+		}, Template),	// }}}
+
+		"DMZ" : Piers.OBJ.inherit(function (e, tagname="DMZUnit") { // {{{
+			Template.apply(this, [e]);
+			this.Box = Piers.DOM(this.E).reduce(function(r, v){
+				r.push([v, parseInt(v.getAttribute(tagname)), v.nextSibling, v.parentNode]); return r;
+			}, "["+tagname+"]", []);
+		}, {
+			"select": function (mask) {
+				mask = parseInt(mask);
+				this.Box.forEach(function(v){
+					if (0!=(v[1]&mask)) {
+						if (v[0].parentNode) return;
+						v[3].insertBefore(v[0], v[2]);
+					} else if(v[0].parentNode) v[0].parentNode.removeChild(v[0]);
+				});
+				return this;
+			}
+		}, Template), // }}}
 
 		// [{"A":123,"Z":789},...] => <tbody><tr>....</tr></tbody>
-		"List": Piers.OBJ.inherit(function (e, tagname="an") {
-			e.Widget=this;
-			this.E=e;
+		"List": Piers.OBJ.inherit(function (e, tagname="an") { // {{{
+			Template.apply(this, [e]);
 			this.Tag=tagname;
 			this.Temp=[];
 			while(this.E.firstChild){
@@ -198,19 +142,17 @@
 			"set": function (ds=[]) { // {{{
 				var self=this;
 				self.clear();
-				return new Promise(function(or,oe){
-					Promise.all(ds.reduce(function(r, d, ix){
-						if(!d) return r;
-						self.Temp.forEach(function(temp){
-							let fm=new Widgets.Form(temp.cloneNode(true),self.Tag);
-							r.push(fm.set(d));
-							fm.E.__Idx__=ix;
-							fm.E.setAttribute("RowType",ix%2==0?"Even":"Odd");
-							self.E.appendChild(fm.E);
-						});
-						return r;
-					},[])).then(or, oe);
+				(this.E.value=ds).forEach(function(d, ix){
+					if(!d) return;
+					self.Temp.forEach(function(temp){
+						let fm=new Widgets.Form(temp.cloneNode(true),self.Tag);
+						fm.set(d);
+						fm.E.__Idx__=ix;
+						fm.E.setAttribute("RowType",ix%2==0?"Even":"Odd");
+						self.E.appendChild(fm.E);
+					});
 				});
+				return this;
 			}, // }}}
 			"get": function () { // {{{
 				var self=this,rd=[];
@@ -221,17 +163,18 @@
 					else
 						rd.push(e.Widget.get());
 				}
-				return rd;
+				return (this.E.value=rd);
 			}, // }}}
 			"clear": function () { // {{{
 				while( this.E.firstChild )
 					this.E.removeChild(this.E.firstChild);
+				return this;
 			}, // }}}
 			"sort": function (func) {
 				return this.set(this.get().sort(func))
 			},
 			"getData":function (e, idxOnly=false) { // {{{
-				let i=Piers.DOM.select( function(i){ return "__Idx__" in i; }, root=e, mode=8 );
+				let i=Piers.DOM(e).find( function(i){ return "__Idx__" in i; } );
 				if (idxOnly) return (i||{}).__Idx__;
 				return i.Widget.get();
 			}, // }}}
@@ -247,8 +190,115 @@
 				if( undefined !== loc ) doc.splice(loc, 0, d); else doc.push(d);
 				return this.set(doc);
 			}	// }}}
-		}),
+		}, Template),	// }}}
+
 		// {"FormA":{...},"FormB":{...}} => <div>FormA</div> or <div>FormB</div>
+		"Form": Piers.OBJ.inherit(function (e, tagname="an") {	// {{{
+			Template.apply(this, [e||document.body]);
+			this.TN = tagname;
+		}, {
+			"set": function (d={}) {
+				let self=this;
+				Piers.DOM(self.E).dfs(function(r,e){
+					let w = e.WidgetID ? Widgets.DB[e.WidgetID] : undefined;
+
+					(e.getAttribute(self.TN)||"")
+						.split(";").filter((i)=>!!i)
+						.forEach(function (a) {
+							let dd = Piers.OBJ.get(d, (a=a.split(":")).shift(), undefined);
+							dd === undefined ? (function(e, t, n){ // clear
+								switch(t){
+								case "Text": case "text":
+									e.textContent="";
+									break;
+								case "Attribute": case "attribute":
+									e.removeAttribute(n);
+									break;
+								case "Value": case "value":
+									delete e[n];
+									break;
+								case "Style": case "style":
+									delete e.style[n];
+									break;
+								default:
+									if (w) return w.clear();
+									throw("No such auto-fill type("+t+")");
+								}
+							})(e, a[0], a[1]) : (function(e, d, t, n) { // set
+								switch(t){
+								case "Text": case "text":
+									e.textContent=d;
+									break;
+								case "Attribute": case "attribute":
+									e.setAttribute(n||"value", d) ;
+									break;
+								case "Value": case "value":
+									e[n||"value"]=d;
+									break;
+								case "Style": case "style":
+									e.style[n||"display"]=d;
+									break;
+								default:
+									if ((t in Widgets) && (!w)) w=new Widgets[t](e);
+									if (w) return w.set(d);
+									throw("No such auto-fill type("+t+")");
+								}
+							})(e, dd, a[0], a[1]);
+						});
+
+					if(w && !w.NoShadow) return true;
+				}, undefined, {});
+				return this;
+			},
+			"get": function (d) {
+				let self = this, rd = d || self.E.value || {};
+				Piers.DOM(self.E).dfs(function(r,e){
+					let w = e.WidgetID ? Widgets.DB[e.WidgetID] : undefined;
+
+					(e.getAttribute(self.TN)||"")
+						.split(";").filter((i)=>!!i)
+						.forEach(function (a) {
+							Piers.OBJ.put(
+								rd,
+								(a=a.split(":")).shift(),
+								(function(e, t, n){
+									switch (t) {
+									case "Text": return e.textContent;
+									case "Value": return e[n||"value"];
+									case "Attribute": return e.getAttribute(n||"NoAttr");
+									case "Style": return e.style[n||"display"];
+									default:
+										if (w) return w.get();
+										throw("No such auto-fill type("+t+")");
+									}
+								})(e, a[0], a[1])
+							);
+						});
+
+					if(w && !w.NoShadow) return true;
+				}, undefined, {});
+				return (self.E.value = rd);
+			},
+			"clear": function (l) {
+				let self = this;
+				(function scan(p) {
+					for (let e = p.firstChild; e; e=e.nextSibling) {
+						if (1 !== e.nodeType) continue;
+						let an = e.getAttribute(self.TN);
+						if (an)
+							an.split(";").forEach( function (an) {
+								let dp = (an = an.split(":")).shift();
+								if (an[0] in Widgets)
+									e.Widget.clear();
+								else self.__clear__(e, an);
+							});
+						else scan(e);
+					}
+				})(self.E);
+			},
+		}, Template),	// }}}
+
+/*
 		"WOpt": Piers.OBJ.inherit(function (e, tagname="an") {
 			(this.E=e).Widget=this;
 			this.Tag=tagname;
@@ -256,7 +306,7 @@
 			"set": function (d) {	// {{{
 				let self=this,wa=[];
 				return new Promise(function(or,oe){
-					Piers.DOM.selectAll("[WOpt]",self.E).forEach(function(e){
+					Piers.DOM(self.E).forEach(function(e){
 						let key=e.getAttribute("WOpt");
 						if (key in d) {
 							e.removeAttribute("WidgetHide");
@@ -264,17 +314,17 @@
 							wa.push(e.Widget.set(d[key]));
 						} else if(key)
 							e.setAttribute("WidgetHide","1");
-					});
+					},"[WOpt]");
 					self.__Doc__ = d;
 					Promise.all(wa).then(or,oe);
 				});
 			},	// }}}
 			"get": function (d) {	// {{{
 				let self=this, rv={};
-				Piers.DOM.selectAll("[WOpt]",self.E).forEach(function(e){
+				Piers.DOM(self.E).forEach(function(e){
 					if(e.getAttribute("WidgetHide")) return;
 					if(e.Widget) rv[e.getAttribute("WOpt")]=e.Widget.get();
-				});
+				},"[WOpt]");
 				return rv;
 			},	// }}}
 			"clear": function() {	// {{{
@@ -282,94 +332,14 @@
 				delete this.__Doc__;
 			}	// }}}
 		}),
-		"Form": Piers.OBJ.inherit(function (e=document.body, tagname="an") {
-			(this.E=e).Widget=this;
-			this.Tag=tagname;
-		}, {
-			"set": function (d={}) {	// {{{
-				let self=this;
-				return new Promise(function(or, oe){
-					(function scan(e) {
-						let an=e.getAttribute(self.Tag),close=false;
-						if (an)
-							an.split(";").forEach(function(an) {
-								let dp=(an=an.split(":")).shift(), dd=Piers.OBJ.get(d,dp,undefined);
-								if (an[0] in Widgets) {
-									if (!e.Widget) new Widgets[an[0]](e,self.Tag);
-									if (dd===undefined)
-										e.Widget.clear();
-									else
-										e.Widget.set(dd);
-									close=true;
-								} else {
-									if (dd===undefined)
-										generic_clear(e,an);
-									else
-										generic_set(e,dd,an);
-								}
-							});
-						if(!close)
-							for (let c=e.firstChild;c;c=c.nextSibling)
-								if (1===c.nodeType) scan(c);
-					})(self.E);
-					or(self.__Doc__ = d);
-				});
-			},	// }}}
-			"get": function (d) {	// {{{
-				let self=this, rd=d||self.__Doc__||{};
-				(function scan(p) {
-					for (let e=p.firstChild;e;e=e.nextSibling) {
-						if (1!==e.nodeType) continue;
-						let an=e.getAttribute(self.Tag);
-						if (an)
-							an.split(";").forEach(function(an) {
-								let dp=(an=an.split(":")).shift();
-								if (an[0] in Widgets)
-									Piers.OBJ.put(rd,dp,e.Widget.get(Piers.OBJ.get(rd,dp,undefined)));
-								else
-									Piers.OBJ.put(rd,dp,generic_get(e,an));
-							});
-						else scan(e);
-					}
-				})(self.E);
-				return (self.__Doc__=rd);
-			},	// }}}
-			"clear": function (l) {	//	{{{
-				let self=this;
-				(function scan(p) {
-					for (let e=p.firstChild;e;e=e.nextSibling) {
-						if (1!==e.nodeType) continue;
-						let an=e.getAttribute(self.Tag);
-						if (an)
-							an.split(";").forEach(function(an) {
-								let dp=(an=an.split(":")).shift();
-								if (an[0] in Widgets)
-									e.Widget.clear();
-								else
-									generic_clear(e,an);
-							});
-						else scan(e);
-					}
-				})(self.E);
-			},	// }}}
-
-			"readonly": function () {	// {{{
-				var i,es;
-				es = this.E.querySelectorAll("input");
-				for(i=0;i<es.length;i++) es[i].setAttribute("readonly",true);
-				es = this.E.querySelectorAll("select");
-				for(i=0;i<es.length;i++) es[i].setAttribute("disabled",true);
-				es = this.E.querySelectorAll("button");
-				for(i=0;i<es.length;i++) es[i].style.display = "none";
-			},	// }}}
-		}),
+*/
 		"init":function(tagname="an"){
-			Piers.DOM.selectAll("["+tagname+"]").forEach(function(pb){
+			Piers.DOM(document.body).forEach(function(pb){
 				if(pb.Widget) return;
 				var a = pb.getAttribute(tagname);
 				if (a && a in Widgets)
 					new Widgets[a](pb, tagname);
-			});
+			}, "["+tagname+"]");
 		}
 	};
 

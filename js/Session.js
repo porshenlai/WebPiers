@@ -246,7 +246,7 @@
 	};
 
 	function flush(){
-		Session.sha = sha256;
+		Session.SHA = sha256;
 		delete window.sha256;
 		delete window.sha224;
 		Session.RSA = JSEncrypt;

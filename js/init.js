@@ -1,6 +1,6 @@
 // <script type="javascript" PiersEntrance="Main.init" PiersXMods="Forms,UI" src="piers/init.js"></script>
 (function(){
-	var R,OBJ,DOM,DATE,Piers,s,i;
+	var R,OBJ,DOM,DOMObj,DATE,Piers,s,i;
 	function nf () { }
 	function gt () { return True; }
 	function gf () { return False; }
@@ -104,12 +104,6 @@
 				for( i=0,r=[]; i<a.length; i++ ) r.push(a[i]);
 			return r;
 		},
-		"ensureArray":function( a ){
-			let r=[];
-			for(let i=0; i<a.length; i++)
-				r.push(a[i]);
-			return r;
-		},
 		"uniq":function( a ){
 			return a.filter(function(r,i){ return i===a.indexOf(r); });
 		},
@@ -175,7 +169,8 @@
 		"throw":function( msg ){
 			console.trace( )
 			throw new Piers.Error(msg);
-		}
+		},
+		"log":lf, "nf": nf
 	};	// }}}
 
 	OBJ={ // OBJECT ROUTINES {{{
@@ -215,7 +210,8 @@
 		"isEmpty":function( o ){
 			return Object.keys( o ).length > 0;
 		},
-		"inherit":function( init, protos={}, base=null ){
+		"inherit": function (init, protos={}, base=null) {
+			// inherit (__init__, {prototype}, {base})
 			init.prototype = Object.create(base ? base.prototype : null, {
 				constructor:{
 					value:init,
@@ -318,100 +314,90 @@
 		}
 	}; // }}}
 
-	Object.assign(DOM = OBJ.inherit(function( e ){ // DOM : Data Object Model
+	DOMObj = OBJ.inherit(function(e){
 		this.E = e;
 	},{	// prototypes
-		// {{{
-		"select": function (qs) {
-			Piers.assert(qs = DOM.select(qs, root=this.E,mode=2), "Not found");
-			return new DOM(qs);
-		},
-		"select8": function (qs) {
-			Piers.assert(qs = DOM.select(qs, root=this.E,mode=8), "Not found");
-			return new DOM(qs);
-		},
-		"selectAll": function (qs) { return DOM.selectAll(qs, root=this.E); },
-		"read": function (an) { return DOM.read(this.E, an); },
-		"write": function (d, an) { return DOM.write(this.E, d, an); },
-		"add": async function (html, reverse = false) {
-			if (!html) return false;
+		"select": function (qs) { // {{{
+			Piers.assert(qs = this.E.querySelector(qs), "Failed to select");
+			return qs;
+		},	// }}}
+		"find": function (qs) { // {{{
+			Piers.assert(qs = (function(self, vf){
+				for (let e=self.E; e; e=e.parentNode)
+					if (vf(e)) return e;
+			})(this, 'string' === typeof(qs) ? ((i)=>i.matches ? i.matches(qs) : false) : qs ), "Failed to find");
+			return qs;
+		},	// }}}
+		"forEach": function (cb, qs) { // {{{
+			if (qs)
+				for (let i=0,s=this.E.querySelectorAll(qs); i<s.length; i++) cb(s[i]);
+			else
+				for (let e=this.E.firstChild; e; e=e.nextSibling) cb(e);
+			return this;
+		},	// }}}
+		"reduce": function (cb, qs, rst={}) { // {{{
+			if (qs)
+				for (let i=0,s=this.E.querySelectorAll(qs); i<s.length; i++)
+					rst = cb(rst, s[i]);
+			else
+				for (let e=this.E.firstChild; e; e=e.nextSibling)
+					rst = cb(rst, e);
+			return rst;
+		},	// }}}
+		"dfs": function (cb, qs, r={}, xself=false) { // {{{
+			if(!xself) cb(r, this.E);
+			for (let e=this.E.firstChild; e; e=e.nextSibling) {
+				if (e.nodeType!==1) continue;
+				if (qs && !e.matches(qs)) continue;
+				if (!cb(r,e)) this.dfs(cb,r);
+			}
+			return this;
+		},	// }}}
+		"get": function () { // {{{
+			return
+				"value" in this.E
+				? this.E.value
+				: this.E.textContent;
+		},	// }}}
+		"set": function (val) { // {{{
+			if ("value" in this.E)
+				this.E.value = val;
+			else this.E.textContent = val || "";
+			return this;
+		},	// }}}
+		"read": function (an) { // {{{
+			return
+				this.reduce(function (r, v) {
+					r[v.getAttribute(an)] = Piers.DOM(v).get();
+					return r;
+				}, "["+an+"]", {});
+		},	// }}}
+		"write": function (d, an) { // {{{
+			this.forEach(function (v) {
+				Piers.DOM(v).set(d[v.getAttribute(an)]);
+			}, "["+an+"]");
+			return this;
+		},	// }}}
+		"clear": function () { // {{{
+			while (this.E.firstChild)
+				this.E.removeChild(this.E.firstChild);
+			return this;
+		},	// }}}
+		"add": function (plan, reverse = false) { // {{{
+			this.E.appendChild(Piers.DOM.create(plan));
+			return this;
+		},	// }}}
+		"addhtml": async function (html, reverse = false) { // {{{
 			let be = await DOM.load(html, type=html.startsWith("<") ? "text/html" : "url");
-			while(ne = be.firstChild) if (ne.nodeType==1) {
+			while (ne = be.firstChild) if (ne.nodeType==1) {
 				if (reverse) this.E.insertBefore(ne, this.E.firstChild);
 				else this.E.appendChild(ne);
 			} else be.removeChild(ne);
 			return this;
-		},
-		"clear": function () { DOM.clear(this.E); return this; }
-		// }}}
-	}),{ // static routines
-		"select":function (qs, root=document.body, mode=2) { // {{{
-			var i;
-			switch(mode){
-			case 2:
-				return root.querySelector( qs );
-			case 6:
-				vf = 'function'===typeof(qs) ? qs : function(i){ return i.matches(qs); };
-				for( i=root; i; i=i.nextSibling)
-					if( i.nodeType===1 && vf(i) )
-						return i;
-			case 8:
-				vf = 'function'===typeof(qs) ? qs : function(i){ return i.matches(qs); };
-				for( i=root; i&&i.parentNode; i=i.parentNode )
-					if( i.nodeType===1 && vf(i) )
-						return i;
-			}
-		},	// }}}
-		"selectAll":function (qs, root=document.body, mode=2) { // {{{
-			var r=[],i,s,dir;
-			switch(mode){
-			case 2:
-				s = root.querySelectorAll( qs );
-				for( i=0; i<s.length; i++ ) r.push(s[i]);
-				break;
-			case 6:
-				vf = 'function'===typeof(qs) ? qs : function(i){ return i.matches(qs); };
-				for( i=root; i; i=i.nextSibling )
-					if( i.nodeType===1 && vf(i) )
-						r.push(i);
-				break;
-			case 8:
-				vf = 'function'===typeof(qs) ? qs : function(i){ return i.matches(qs); };
-				for( i=root; i&&i.parentNode; i=i.parentNode )
-					if( i.nodeType===1 && vf(i) )
-						r.push(i);
-				break;
-			}
-			return r;
-		},	// }}}
-		"read":function (e, vntag="vn") { // {{{
-			return this.selectAll("["+vntag+"]",e,2).reduce(function(r,e){
-				let vn=e.getAttribute(vntag);
-				switch (e.tagName) {
-				case "INPUT": case "SELECT":
-					r[vn]=e.value;
-					break;
-				default:
-					r[vn]=e.textContent;
-					break;
-				}
-				return r;
-			},{});
-		}, // }}}
-		"write":function (e, d, vntag="vn") { // {{{
-			let n;
-			for (e of this.selectAll("["+vntag+"]",e,2)) {
-				n=e.getAttribute(vntag);
-				switch (e.tagName) {
-				case "INPUT": case "SELECT":
-					e.value=d[n];
-					break;
-				default:
-					e.textContent=d[n];
-					break;
-				}
-			}
-		},	// }}}
+		}	// }}}
+	});
+
+	Object.assign(DOM = function(e){ return new DOMObj(e); },{ // static routines
 		"getClasses":function (e) { // {{{
 			return (e.getAttribute("class")||"")
 					.split(/\s+/)
@@ -535,6 +521,7 @@
 		}, // }}}
 		"evalScript":function (se) { // {{{
 			var p,x,s;
+			Piers.assert(se.tagName==="SCRIPT","Not a script element");
 			p = se.parentNode;
 			x = se.nextSibling;
 			s = DOM.create({"T":"script","V":{"text":se.text}});
@@ -939,6 +926,13 @@
 			if(!rst) throw new Error(msg);
 		},
 
+		"reduce" : function (src, func, rst) {
+			if (src.length)
+				for(let i=0;i<src.length;i++)
+					rst = func(rst,src[i],i);
+			return rst;
+		},
+
 		"getUID" : function () {
 			UID_COUNT++
 			return ((new Date()).getTime()*1000+(UID_COUNT%1000)).toString(36);
@@ -967,50 +961,57 @@
 		"gf":gf	// get false
 	};
 
-	if( (s=document.currentScript) && (i=/(.*)init.js/.exec(s.getAttribute("src")||""))
+	if(
+		(s=document.currentScript) &&
+		(i=/(.*)init.js/.exec(s.getAttribute("src")||""))
 	){
 		Piers.Env.PierPath = i[1];
-		Piers.Env.PierArgs = R.toArray( s.attributes ).reduce( function(r,i){
+		Piers.Env.PierArgs = R.toArray(s.attributes).reduce(function (r,i) {
 			if(i.value) r[i.name] = i.value;
 			return r;
-		}, {} );
-		Piers.Env.Entrance = s.getAttribute( "PierEntrance" ).split( "." );
-		Piers.Env.XMods = s.getAttribute( "PierXMods" );
-		Piers.Env.XMods = Piers.Env.XMods ? Piers.Env.XMods.split( "," ) : [];
-		s.parentNode.appendChild( DOM.create({"T":"link","A":{"rel":"stylesheet","href":U.pathjoin([Piers.Env.PierPath,"style.css"])}}) );
+		}, {});
+		Piers.Env.Entrance = s.getAttribute("PierEntrance").split(".");
+		Piers.Env.XMods = s.getAttribute("PierXMods");
+		Piers.Env.XMods = Piers.Env.XMods ? Piers.Env.XMods.split(",") : [];
+		s.parentNode.appendChild(
+			DOM.create({
+				"T":"link",
+				"A":{"rel":"stylesheet","href":U.pathjoin([Piers.Env.PierPath,"style.css"])}
+			})
+		);
 	}
 
-	window.addEventListener( "error", function(evt){
+	window.addEventListener("error", function (evt) {
 		R.trace({
 			"c":"error",
 			"m":"["+evt.filename+":"+evt.lineno+"."+evt.colno+"]\n"+evt.message
 		});
-	} );
+	});
 	function doInit(){
 		document.removeEventListener( "DOMContentLoaded", doInit );
 		try {
 			function start(){
 				if( Piers.Env.Entrance )
-					Piers.OBJ.apply( window, Piers.Env.Entrance );
+					Promise.resolve(Piers.OBJ.apply(window, Piers.Env.Entrance)).then(nf, console.log);
 			}
 			if( Piers.Env.XMods )
-				Promise.all( Piers.Env.XMods.map(function(v){
+				Promise.all(Piers.Env.XMods.map(function (v) {
 					return Piers.require(v);
-				}) ).then( function(s){
+				})).then(function (s) {
 					try{
 						s.forEach(function(l,x){
 							Piers[Piers.Env.XMods[x]] = l;
 						});
 						start();
 					}catch(e){
-						console.trace( e );
-						alert( e instanceof Piers.Error ? JSON.stringify(e.resolve(),null,2) : e.toString() );
+						console.trace(e);
+						alert(e instanceof Piers.Error ? JSON.stringify(e.resolve(),null,2) : e.toString());
 					}
-				}, console.trace );
+				}, console.trace);
 			else start();
 		} catch(e) {
-			console.trace( e );
-			alert( e instanceof Piers.Error ? JSON.stringify(e.resolve(),null,2) : e.toString() );
+			console.trace(e);
+			alert(e instanceof Piers.Error ? JSON.stringify(e.resolve(),null,2) : e.toString());
 		}
 	}
 	if( document.readyState==="complete" ||
