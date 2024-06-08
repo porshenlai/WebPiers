@@ -344,12 +344,12 @@
 					rst = cb(rst, e);
 			return rst;
 		},	// }}}
-		"dfs": function (cb, qs, r={}, xself=false) { // {{{
+		"dfs": function (cb, qs=undefined, r={}, xself=false) { // {{{
 			if(!xself) cb(r, this.E);
 			for (let e=this.E.firstChild; e; e=e.nextSibling) {
 				if (e.nodeType!==1) continue;
 				if (qs && !e.matches(qs)) continue;
-				if (!cb(r,e)) this.dfs(cb,r);
+				if (!cb(r,e)) DOM(e).dfs(cb,qs,r);
 			}
 			return this;
 		},	// }}}
